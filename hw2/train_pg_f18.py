@@ -42,6 +42,12 @@ def build_mlp(input_placeholder, output_size, scope, n_layers, size, activation=
         Hint: use tf.layers.dense
     """
     # YOUR CODE HERE
+    # with tf.variable_scope(scope):
+    #     model = input_placeholder
+    #     for _ in range(n_layers):
+    #         model = tf.layers.dense(inputs = model, units = size, activation = activation)
+    #     output_placeholder = tf.layers.dense(model, output_size, output_activation)
+    #     return output_placeholder
     with tf.variable_scope(scope):
         # output_placeholder = tf.placeholder(shape=[None, output_size], name='output_placeholder')
         nn = input_placeholder
@@ -167,7 +173,7 @@ class Agent(object):
                                 scope='policy_network_mean',
                                 n_layers=self.n_layers, size=self.size)
 
-            sy_logstd = tf.get_variable('logstd', [self.ac_dim])
+            sy_logstd = tf.get_variable('logits', [self.ac_dim])
 
             return (sy_mean, sy_logstd)
 
@@ -208,11 +214,11 @@ class Agent(object):
         else:
             sy_mean, sy_logstd = policy_parameters
             # YOUR_CODE_HERE
-            # sy_sampled_ac = sy_mean + tf.exp(sy_logstd) * tf.random_normal(tf.shape(sy_mean))
+            sy_sampled_ac = sy_mean + tf.exp(sy_logstd) * tf.random_normal(tf.shape(sy_mean))
 
-            sy_sampled_ac = tf.random_normal(shape=self.ac_dim,
-                                             mean=sy_mean,
-                                             stddev=tf.exp(sy_logstd))
+            # sy_sampled_ac = tf.random_normal(shape=self.ac_dim,
+            #                                  mean=sy_mean,
+            #                                  stddev=tf.exp(sy_logstd))
         return sy_sampled_ac
 
     #========================================================================================#
@@ -292,8 +298,8 @@ class Agent(object):
         #                           ----------PROBLEM 2----------
         # Loss Function and Training Operation
         #========================================================================================#
-        loss = -tf.reduce_mean(self.sy_logprob_n * self.sy_adv_n)  # YOUR CODE HERE
-        self.update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
+        self.loss = -tf.reduce_mean(tf.multiply(self.sy_logprob_n, self.sy_adv_n))  # YOUR CODE HERE
+        self.update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
 
         #========================================================================================#
         #                           ----------PROBLEM 6----------
@@ -341,7 +347,7 @@ class Agent(object):
             #                           ----------PROBLEM 3----------
             #====================================================================================#
             # raise NotImplementedError
-            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: [ob]})  # YOUR CODE HERE
+            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: ob[None]})  # YOUR CODE HERE
             ac = ac[0]
             acs.append(ac)
             ob, rew, done, _ = env.step(ac)
@@ -433,7 +439,7 @@ class Agent(object):
                 q[-1] = rewards[-1]
                 for i in reversed(range(episode_length - 1)):
                     q[i] = rewards[i] + self.gamma * q[i + 1]
-            q_n.extend(q)
+                q_n.extend(q)
 
         else:
             # raise NotImplementedError
@@ -443,7 +449,7 @@ class Agent(object):
                 for i, reward in enumerate(rewards):
                     ret_tar += self.gamma**i * reward
                 q = np.ones_like(rewards) * ret_tar
-            q_n.extend(q)
+                q_n.extend(q)
 
         return q_n
 
@@ -480,8 +486,8 @@ class Agent(object):
             # YOUR CODE HERE
             b_n = self.sess.run(self.baseline_prediction, feed_dict={self.sy_ob_no: ob_no})
             b_n = normalize(b_n, np.mean(q_n), np.std(q_n))
-
             adv_n = q_n - b_n
+
         else:
             adv_n = q_n.copy()
         return adv_n
@@ -576,7 +582,11 @@ class Agent(object):
                      self.sy_ac_na: ac_na,
                      self.sy_adv_n: adv_n
                      }
-        self.sess.run(self.update_op, feed_dict=feed_dict)
+        loss_before = self.sess.run(self.loss, feed_dict = feed_dict)
+        self.sess.run(self.update_op, feed_dict = feed_dict)
+        loss_after = self.sess.run(self.loss, feed_dict = feed_dict)
+        print(f'The loss before PG is {loss_before:.5}')
+        print(f"The loss after PG is {loss_after:.5} ")
 
 
 def train_PG(
