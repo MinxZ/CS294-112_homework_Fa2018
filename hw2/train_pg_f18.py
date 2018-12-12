@@ -48,8 +48,7 @@ def build_mlp(input_placeholder, output_size, scope, n_layers, size, activation=
         for i in range(n_layers):
             nn = tf.layers.dense(inputs=nn, units=size, activation=activation)
         output_placeholder = tf.layers.dense(nn, output_size, activation=output_activation)
-    # raise NotImplementedError
-    return output_placeholder
+        return output_placeholder
 
 
 def pathlength(path):
@@ -342,7 +341,7 @@ class Agent(object):
             #                           ----------PROBLEM 3----------
             #====================================================================================#
             # raise NotImplementedError
-            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_op_no: [ob]})  # YOUR CODE HERE
+            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: [ob]})  # YOUR CODE HERE
             ac = ac[0]
             acs.append(ac)
             ob, rew, done, _ = env.step(ac)
@@ -433,7 +432,7 @@ class Agent(object):
                 q = np.zeros_like(rewards)
                 q[-1] = rewards[-1]
                 for i in reversed(range(episode_length - 1)):
-                    q[i] = reward[i] + self.gamma * q[i + 1]
+                    q[i] = rewards[i] + self.gamma * q[i + 1]
             q_n.extend(q)
 
         else:
@@ -558,7 +557,7 @@ class Agent(object):
             feed_dict = {self.sy_ob_no: ob_no,
                          self.sy_target_n: target_n
                          }
-            self.ses.run(self.baseline_update_op, feed_dict=feed_dict)
+            self.sess.run(self.baseline_update_op, feed_dict=feed_dict)
 
         #====================================================================================#
         #                           ----------PROBLEM 3----------
@@ -577,7 +576,7 @@ class Agent(object):
                      self.sy_ac_na: ac_na,
                      self.sy_adv_n: adv_n
                      }
-        self.ses.run(self.update_op, feed_dict=feed_dict)
+        self.sess.run(self.update_op, feed_dict=feed_dict)
 
 
 def train_PG(
